@@ -111,14 +111,29 @@ const corners=[[-ww/2,-dd/2],[ww/2,-dd/2],[ww/2,dd/2],[-ww/2,dd/2]].map(([a,b])=
 const simple=(height,base=0)=>{quad(v(0,base),v(1,base),v(1,height),v(0,height),shaded(color,.75));quad(v(1,base),v(2,base),v(2,height),v(1,height),shaded(color,.65));quad(v(2,base),v(3,base),v(3,height),v(2,height),shaded(color,.82));quad(v(3,base),v(0,base),v(0,height),v(3,height),shaded(color,.72));quad(v(0,height),v(1,height),v(2,height),v(3,height),shaded(color,1.04))};
 if(type==='의류 행거'||type==='진열 선반'||type==='벽면 진열대'){simple(.12);simple(hh,hh-.12);for(let j=0;j<4;j++){let xp=cx+(j%2?ww*.4:-ww*.4),zp=cz+(j>1?dd*.4:-dd*.4);cuboid(xp-.025,zp-.025,.05,.05,hh-.1,'#777777')}}
 else if(type==='의자'){simple(.45);let a=corners[2],b=corners[3];wall(a[0],a[1],b[0],b[1],.9,color,.065)}
-else if(type==='체험 테이블'){
- // Table form: thin top board with four slim legs.
- const topH=0.08, topBase=Math.max(0.68,hh-topH), legInset=Math.min(0.14,Math.min(ww,dd)*0.18), legW=Math.min(0.08,Math.min(ww,dd)*0.12);
- simple(topBase+topH,topBase);
- for(const sx of [-1,1]) for(const sz of [-1,1]){
-   const lx=cx+sx*(ww/2-legInset-legW/2), lz=cz+sz*(dd/2-legInset-legW/2);
-   cuboid(lx-legW/2,lz-legW/2,legW,legW,topBase,'#5a5a5a');
- }
+else if(type==='체험 테이블'||type==='진열 테이블'){
+ // Rotated tabletop and four visible legs, scaled with the 2D footprint.
+ const ux=Math.cos(ang),uz=Math.sin(ang),vx=-uz,vz=ux;
+ const p=(a,b,y)=>[cx+a*ux+b*vx,y,cz+a*uz+b*vz];
+ const brick=(a,b,c,d,lo,hi,shade)=>{const A=p(a,b,lo),B=p(c,b,lo),C=p(c,d,lo),D=p(a,d,lo),E=p(a,b,hi),F=p(c,b,hi),G=p(c,d,hi),H=p(a,d,hi);quad(A,B,F,E,shaded(shade,.8));quad(B,C,G,F,shaded(shade,.7));quad(C,D,H,G,shaded(shade,.85));quad(D,A,E,H,shaded(shade,.74));quad(E,F,G,H,shaded(shade,1.05))};
+ const ht=Math.max(.60,Math.min(hh,.85)),th=.065,lw=Math.min(.075,ww*.14,dd*.14),inset=Math.min(.12,ww*.18,dd*.18);
+ brick(-ww/2,-dd/2,ww/2,dd/2,ht-th,ht,color);
+ for(const sx of [-1,1])for(const sz of [-1,1]){const a=sx*(ww/2-inset-lw/2),b=sz*(dd/2-inset-lw/2);brick(a-lw/2,b-lw/2,a+lw/2,b+lw/2,0,ht-th,'#666666')}
+ brick(-ww/2+inset,-dd/2+.05,ww/2-inset,-dd/2+.09,ht-.16,ht-th,'#777777');
+ brick(-ww/2+inset,dd/2-.09,ww/2-inset,dd/2-.05,ht-.16,ht-th,'#777777');
+}
+else if(type==='키오스크'){
+ // Standing kiosk with foot plate, stem, portrait screen, and front interface.
+ const ux=Math.cos(ang),uz=Math.sin(ang),vx=-uz,vz=ux;
+ const p=(a,b,y)=>[cx+a*ux+b*vx,y,cz+a*uz+b*vz];
+ const brick=(a,b,c,d,lo,hi,shade)=>{const A=p(a,b,lo),B=p(c,b,lo),C=p(c,d,lo),D=p(a,d,lo),E=p(a,b,hi),F=p(c,b,hi),G=p(c,d,hi),H=p(a,d,hi);quad(A,B,F,E,shaded(shade,.8));quad(B,C,G,F,shaded(shade,.7));quad(C,D,H,G,shaded(shade,.85));quad(D,A,E,H,shaded(shade,.74));quad(E,F,G,H,shaded(shade,1.05))};
+ const bw=ww*.94,bd=dd*.9,sw=Math.min(.14,ww*.40),sd=Math.min(.12,dd*.4);
+ brick(-bw/2,-bd/2,bw/2,bd/2,0,.055,'#414141');
+ brick(-sw/2,-sd/2,sw/2,sd/2,.055,.98,'#5a5a5a');
+ const dw=ww*.94,ddp=Math.min(.17,dd*.60);
+ brick(-dw/2,-ddp/2,dw/2,ddp/2,.97,1.73,color);
+ brick(-dw*.39,-ddp/2-.013,dw*.39,-ddp/2-.002,1.16,1.62,'#f0f0f0');
+ brick(-dw*.23,-ddp/2-.022,dw*.23,-ddp/2-.011,1.045,1.105,'#9c9c9c');
 }
 else if(type==='포토존'||type==='브랜드 로고월'||type==='홍보 배너'||type==='거울'||type==='디지털 사이니지'){simple(hh)}
 else if(type==='원형 전시대'){cylinder(cx,cz,ww/2,dd/2,hh,color)}
