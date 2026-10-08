@@ -139,8 +139,8 @@ else if(type==='러그'){flatRug(cx,cz,ww,dd,ang,color)}
 else simple(hh);
 }
 function createObjects(){objects=[];const state=window.getPopUpDesign?.();if(!state)return;const floor=state.floor||'#ffffff';$('threeObjectCount').textContent=`가구 ${state.items.filter(i=>i.kind==='furniture').length}개 · 가벽 ${state.items.filter(i=>i.kind==='wall').length}개 반영`;quad([0,-.08,0],[8,-.08,0],[8,-.08,6],[0,-.08,6],shaded(floor,.96));for(let x=0;x<=8;x+=.5)quad([x,-.079,0],[x+.012,-.079,0],[x+.012,-.079,6],[x,-.079,6],'#dedede');for(let z=0;z<=6;z+=.5)quad([0,-.078,z],[8,-.078,z],[8,-.078,z+.012],[0,-.078,z+.012],'#dedede');
-// Exterior walls use a low outline, keeping interior furniture visible from any direction.
-const c=state.wall||'#252525';wall(0,0,8,0,.22,c,.09);wall(8,0,8,6,.22,c,.09);wall(0,0,0,4.55,.22,c,.09);wall(0,5.4,0,6,.22,c,.09);wall(0,6,8,6,.22,c,.09);
+// Exterior walls are shown at a medium preview height (1.1m), balancing enclosure and interior visibility.
+const c=state.wall||'#252525';wall(0,0,8,0,1.10,c,.09);wall(8,0,8,6,1.10,c,.09);wall(0,0,0,4.55,1.10,c,.09);wall(0,5.4,0,6,1.10,c,.09);wall(0,6,8,6,1.10,c,.09);
 for(const i of state.items){if(i.kind==='wall')wall(i.x1/100,i.y1/100,i.x2/100,i.y2/100,2.35,i.color||'#222222',Math.max(.05,(i.thickness||12)/100));else furniture(i)}
 }
 function paint(){if(!modal.classList.contains('open'))return;const r=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2),w=Math.max(1,r.width),h=Math.max(1,r.height);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.fillStyle='#f4f4f4';ctx.fillRect(0,0,w,h);createObjects();objects.sort((a,b)=>a.depth-b.depth);for(const face of objects){const pts=face.points.map(p=>project(transform(...p),w,h));ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fillStyle=face.color;ctx.fill();ctx.strokeStyle=face.outline;ctx.lineWidth=.8;ctx.stroke()}}
