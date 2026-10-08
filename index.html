@@ -122,7 +122,17 @@ if(['장식 조명','천장 펜던트 조명','천장 레일 조명','벽부착 
 }
 const corners=[[-ww/2,-dd/2],[ww/2,-dd/2],[ww/2,dd/2],[-ww/2,dd/2]].map(([a,b])=>[cx+a*Math.cos(ang)-b*Math.sin(ang),cz+a*Math.sin(ang)+b*Math.cos(ang)]);const v=(i,h)=>[corners[i][0],h,corners[i][1]];
 const simple=(height,base=0)=>{quad(v(0,base),v(1,base),v(1,height),v(0,height),shaded(color,.75));quad(v(1,base),v(2,base),v(2,height),v(1,height),shaded(color,.65));quad(v(2,base),v(3,base),v(3,height),v(2,height),shaded(color,.82));quad(v(3,base),v(0,base),v(0,height),v(3,height),shaded(color,.72));quad(v(0,height),v(1,height),v(2,height),v(3,height),shaded(color,1.04))};
-if(type==='의류 행거'||type==='진열 선반'||type==='벽면 진열대'){simple(.12);simple(hh,hh-.12);for(let j=0;j<4;j++){const a=(j%2?ww*.4:-ww*.4),b=(j>1?dd*.4:-dd*.4),xp=cx+a*Math.cos(ang)-b*Math.sin(ang),zp=cz+a*Math.sin(ang)+b*Math.cos(ang);const leg=.05,base=0,top=hh-.1;const A=[xp-leg/2,base,zp-leg/2],B=[xp+leg/2,base,zp-leg/2],C=[xp+leg/2,base,zp+leg/2],D=[xp-leg/2,base,zp+leg/2],E=[xp-leg/2,top,zp-leg/2],F=[xp+leg/2,top,zp-leg/2],G=[xp+leg/2,top,zp+leg/2],H=[xp-leg/2,top,zp+leg/2];quad(A,B,F,E,'#777777');quad(B,C,G,F,'#666666');quad(C,D,H,G,'#888888');quad(D,A,E,H,'#777777');quad(E,F,G,H,'#999999')}}
+if(type==='의류 행거'||type==='진열 선반'||type==='벽면 진열대'){
+ // Every structural element uses the identical rotated local coordinate system.
+ const local=(a,b,y)=>[cx+a*Math.cos(ang)-b*Math.sin(ang),y,cz+a*Math.sin(ang)+b*Math.cos(ang)];
+ const beam=(a,b,c,d,y0,y1,material)=>{const A=local(a,b,y0),B=local(c,b,y0),C=local(c,d,y0),D=local(a,d,y0),E=local(a,b,y1),F=local(c,b,y1),G=local(c,d,y1),H=local(a,d,y1);quad(A,B,F,E,shaded(material,.78));quad(B,C,G,F,shaded(material,.68));quad(C,D,H,G,shaded(material,.84));quad(D,A,E,H,shaded(material,.73));quad(E,F,G,H,shaded(material,1.03))};
+ const th=Math.min(.10,hh*.10),post=Math.min(.055,ww*.16,dd*.16),inset=Math.min(.045,ww*.09,dd*.09);
+ // Four posts positioned relative to the corners of each shelf, rotating with the top and bottom boards.
+ for(const sx of [-1,1])for(const sz of [-1,1]){const a=sx*(ww/2-inset-post/2),b=sz*(dd/2-inset-post/2);beam(a-post/2,b-post/2,a+post/2,b+post/2,0,hh,'#777777')}
+ beam(-ww/2,-dd/2,ww/2,dd/2,0,th,color);
+ beam(-ww/2,-dd/2,ww/2,dd/2,hh-th,hh,color);
+ if(type!=='의류 행거')for(const ratio of [.34,.66]){const y=hh*ratio;beam(-ww/2,-dd/2,ww/2,dd/2,y-th/2,y+th/2,color)}
+}
 else if(type==='의자'){simple(.45);let a=corners[2],b=corners[3];wall(a[0],a[1],b[0],b[1],.9,color,.065)}
 else if(type==='체험 테이블'||type==='진열 테이블'){
  // Rotated tabletop and four visible legs, scaled with the 2D footprint.
