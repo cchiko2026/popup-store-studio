@@ -16,7 +16,7 @@
  function scheduleDraftSave(){if(!autoSaveReady)return;clearTimeout(autoSaveTimer);$('autoSaveStatus').textContent='저장 중…';autoSaveTimer=setTimeout(storeDraft,600)}
  function restoreDraft(d){if(!d||d.schemaVersion!==2||!d.state||!Array.isArray(d.state.items)||!Array.isArray(d.state.routes))throw Error('invalid draft');state=clone(d.state);uid=Math.max(1,Number(d.uid)||1,...state.items.map(x=>(Number(x.id)||0)+1));selected=null;activeDraftId=d.draftId||activeDraftId;draftRevision=Number(d.revision)||0;const p=d.project||{};$('student').value=p.student||'';$('store').value=p.store||'MY POP-UP';if([...$('concept').options].some(o=>o.value===p.concept))$('concept').value=p.concept;[1,2,3].forEach(n=>$('answer'+n).value=p.answers?.[n-1]||'');$('floorColor').value=state.floor||'#ffffff';$('wallColor').value=state.wall||'#191919'}
  function loadSavedDraft(showPrompt=true){try{const raw=localStorage.getItem(DRAFT_KEY);if(!raw){if(showPrompt)alert('이 브라우저에 저장된 작업이 없습니다. 작업 파일(.json)이 있다면 파일 불러오기를 이용하세요.');return false}const d=JSON.parse(raw);if(showPrompt&&!confirm('자동 저장된 작업을 불러올까요?\\n저장 시각: '+(d.updatedAt?new Date(d.updatedAt).toLocaleString('ko-KR'):'이전 수업')))return false;restoreDraft(d);history=[];future=[];updateHistory();render();$('autoSaveStatus').textContent='✓ 이전 작업 복원 완료';return true}catch(e){$('autoSaveStatus').textContent='⚠ 복원 실패';if(showPrompt)alert('자동 저장 작업을 읽지 못했습니다. 작업 파일(.json)을 확인해 주세요.');return false}}
- function initDraft(){autoSaveReady=false;try{const raw=localStorage.getItem(DRAFT_KEY);if(raw){const d=JSON.parse(raw);if(confirm('이전에 자동 저장된 디자인이 있습니다.\\n저장 시각: '+(d.updatedAt?new Date(d.updatedAt).toLocaleString('ko-KR'):'이전 수업')+'\\n\\n확인: 이어하기 / 취소: 현재 빈 화면 유지'))restoreDraft(d)}}catch(e){$('autoSaveStatus').textContent='⚠ 자동 저장 읽기 실패'}autoSaveReady=true}
+ function initDraft(){autoSaveReady=false;try{const raw=localStorage.getItem(DRAFT_KEY);if(raw){const d=JSON.parse(raw);if(confirm('이전에 자동 저장된 디자인이 있습니다.\\n저장 시각: '+(d.updatedAt?new Date(d.updatedAt).toLocaleString('ko-KR'):'이전 수업')+'\\n\\n확인: 이어하기 / 취소: 현재 빈 화면 유지'))restoreDraft(d)}}catch(e){$('autoSaveStatus').textContent='⚠ 자동 저장 읽기 실패'}}
  $('resumeDraft').onclick=()=>loadSavedDraft(true);
  ['student','store','concept','answer1','answer2','answer3'].forEach(id=>$(id).addEventListener('input',scheduleDraftSave));
  window.addEventListener('pagehide',()=>{if(autoSaveTimer)clearTimeout(autoSaveTimer);storeDraft()});
@@ -52,7 +52,7 @@ if(e.key==='Delete'||e.key==='Backspace'){const i=itBy(selected);if(i){save();st
 const keyboardGuide=document.createElement('div');keyboardGuide.style.cssText='margin:12px 0;padding:11px 12px;background:#f6f6f6;border:1px solid #ddd;border-radius:8px;color:#333;font-size:12px;line-height:1.7';
 keyboardGuide.innerHTML='<strong>⌨ 키보드 이동</strong><br>가구 또는 가벽 선택 후 ↑ ↓ ← →<br>기본: 10cm · Alt+방향키: 1cm<br>Shift+방향키: 50cm';
 $('editor').parentElement.appendChild(keyboardGuide);
-initDraft();render();updateHistory();updateModes()})();
+initDraft();render();autoSaveReady=true;updateHistory();updateModes()})();
 </script>
 <style>
 #threeModal{position:fixed;inset:0;background:#000b;z-index:50;display:none;align-items:center;justify-content:center;padding:16px}
