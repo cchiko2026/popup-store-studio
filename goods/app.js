@@ -40,16 +40,31 @@ if(o.type==='rack'){for(const x of [-.7,.7]){box(g,.07,1.8,.07,x,.9,0,c);box(g,.
 }else{
 if(o.mount?.mode==='clothing'){
  const parent=state.objects.find(f=>f.id===o.mount.target),onRack=parent?.name==='의류 행거';
- const shade=o.color||'#b8a49b',y=onRack?0:.16;
- // Keep the original uploaded design texture rather than replacing the goods with a plain box.
- box(g,.43,.53,.12,0,y+.30,0,shade);
- for(const side of [-1,1])box(g,.18,.25,.12,side*.29,y+.43,0,shade);
- const clothingMap=texture(o);
- const printMat=new T.MeshStandardMaterial({map:clothingMap,side:T.DoubleSide,roughness:.86,transparent:false});
- const print=new T.Mesh(new T.PlaneGeometry(.425,.525),printMat);
- print.position.set(0,y+.30,.066);print.castShadow=false;g.add(print);
- if(onRack){const hook=new T.Mesh(new T.TorusGeometry(.045,.009,8,15,Math.PI*1.5),material('#555555'));hook.position.set(0,y+.67,0);hook.rotation.z=.45;g.add(hook);box(g,.47,.016,.025,0,y+.59,0,'#666666')}
- else{box(g,.26,.08,.14,0,y+.64,0,shade)}
+ const design=state.designs.find(d=>d.id===o.design);
+ // Display the user's actual uploaded image, preserving its native aspect ratio and PNG alpha.
+ // Never substitute an opaque monochrome shirt for a successful uploaded design.
+ const top=onRack?.69:.83;
+ if(design?.src){
+   const imageTexture=new T.TextureLoader().load(design.src);
+   imageTexture.colorSpace=T.SRGBColorSpace;
+   const ratio=T.MathUtils.clamp((design.width||1)/(design.height||1),.2,5);
+   const maxW=onRack?.50:.64,maxH=onRack?.68:.85;
+   const iw=Math.min(maxW,maxH*ratio),ih=iw/ratio;
+   const art=new T.Mesh(new T.PlaneGeometry(iw,ih),new T.MeshBasicMaterial({map:imageTexture,transparent:true,alphaTest:.015,side:T.DoubleSide,depthWrite:false}));
+   art.position.set(0,top-ih/2, onRack?.035:.20);
+   art.renderOrder=6;
+   g.add(art);
+ }else{
+   // A missing legacy image reference remains a visible placeholder, without rewriting saved data.
+   const shade=o.color||'#b8a49b';
+   box(g,.44,.54,.035,0,top-.28,0,shade);
+ }
+ if(onRack){
+   const hanger=new T.Mesh(new T.TorusGeometry(.044,.009,8,16,Math.PI*1.4),material('#555555'));
+   hanger.position.set(0,top+.06,0);hanger.rotation.z=.48;g.add(hanger);
+   const arm=new T.Mesh(new T.CylinderGeometry(.009,.009,.54,8),material('#666666'));
+   arm.rotation.z=Math.PI/2;arm.position.set(0,top-.005,0);g.add(arm);
+ }
  }else if(o.type==='photo'){const d=state.designs.find(d=>d.id===o.design);const ratio=T.MathUtils.clamp((d?.width||512)/(d?.height||512),.1,10),h=.7,w=h*ratio,depth=(o.photoThickness||3)/100;const tex=new T.TextureLoader().load(d?.src||'');tex.colorSpace=T.SRGBColorSpace;const mat=new T.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.08,side:T.DoubleSide,roughness:.75});for(const z of [-depth/2,depth/2]){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,z);if(z<0)m.rotation.y=Math.PI;m.castShadow=true;g.add(m)}const layers=Math.min(12,Math.max(2,Math.round(depth*100)));for(let n=1;n<layers;n++){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,-depth/2+depth*n/layers);g.add(m)}mat.dispose()}
 if(['pillow','bodypillow'].includes(o.type)){const w=o.type==='pillow'?.65:.42,h=o.type==='pillow'?.45:1.15,depth=o.type==='pillow'?.18:.23,exponent=o.type==='pillow'?.5:.72;const geo=new T.SphereGeometry(1,48,32),pos=geo.attributes.position,uv=geo.attributes.uv;const rounded=v=>Math.sign(v)*Math.pow(Math.abs(v),exponent);for(let n=0;n<pos.count;n++){const x=rounded(pos.getX(n))*w/2,y=rounded(pos.getY(n))*h/2,z=rounded(pos.getZ(n))*depth/2;pos.setXYZ(n,x,y,z);uv.setXY(n,x/w+.5,y/h+.5)}geo.computeVertexNormals();const m=new T.Mesh(geo,new T.MeshStandardMaterial({map:texture(o),roughness:.95}));m.position.y=h/2;m.castShadow=true;m.receiveShadow=true;g.add(m);const points=[];for(let n=0;n<=96;n++){const a=n/96*Math.PI*2;points.push(new T.Vector3(rounded(Math.cos(a))*w/2,rounded(Math.sin(a))*h/2+h/2,0))}const seam=new T.Line(new T.BufferGeometry().setFromPoints(points),new T.LineBasicMaterial({color:new T.Color(o.color).multiplyScalar(.82)}));g.add(seam)}
 if(o.type==='mug'){const body=new T.Mesh(new T.CylinderGeometry(.2,.18,.4,40,1,true),new T.MeshStandardMaterial({map:texture(o),side:T.DoubleSide,roughness:.25}));body.position.y=.2;g.add(body);cylinder(g,.177,.035,0,.025,0,c);const handle=new T.Mesh(new T.TorusGeometry(.14,.035,12,32),material(c));handle.position.set(.22,.23,0);g.add(handle)}
