@@ -40,11 +40,14 @@ if(o.type==='rack'){for(const x of [-.7,.7]){box(g,.07,1.8,.07,x,.9,0,c);box(g,.
 }else{
 if(o.mount?.mode==='clothing'){
  const parent=state.objects.find(f=>f.id===o.mount.target),onRack=parent?.name==='의류 행거';
- const shade=o.color||'#b8a49b';
- // Local shirt/dress silhouette: wide shoulders, sleeves, tapered body, and hanger hook when on a rack.
- const y=onRack?0:.16;
+ const shade=o.color||'#b8a49b',y=onRack?0:.16;
+ // Keep the original uploaded design texture rather than replacing the goods with a plain box.
  box(g,.43,.53,.12,0,y+.30,0,shade);
  for(const side of [-1,1])box(g,.18,.25,.12,side*.29,y+.43,0,shade);
+ const clothingMap=texture(o);
+ const printMat=new T.MeshStandardMaterial({map:clothingMap,side:T.DoubleSide,roughness:.86,transparent:false});
+ const print=new T.Mesh(new T.PlaneGeometry(.425,.525),printMat);
+ print.position.set(0,y+.30,.066);print.castShadow=false;g.add(print);
  if(onRack){const hook=new T.Mesh(new T.TorusGeometry(.045,.009,8,15,Math.PI*1.5),material('#555555'));hook.position.set(0,y+.67,0);hook.rotation.z=.45;g.add(hook);box(g,.47,.016,.025,0,y+.59,0,'#666666')}
  else{box(g,.26,.08,.14,0,y+.64,0,shade)}
  }else if(o.type==='photo'){const d=state.designs.find(d=>d.id===o.design);const ratio=T.MathUtils.clamp((d?.width||512)/(d?.height||512),.1,10),h=.7,w=h*ratio,depth=(o.photoThickness||3)/100;const tex=new T.TextureLoader().load(d?.src||'');tex.colorSpace=T.SRGBColorSpace;const mat=new T.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.08,side:T.DoubleSide,roughness:.75});for(const z of [-depth/2,depth/2]){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,z);if(z<0)m.rotation.y=Math.PI;m.castShadow=true;g.add(m)}const layers=Math.min(12,Math.max(2,Math.round(depth*100)));for(let n=1;n<layers;n++){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,-depth/2+depth*n/layers);g.add(m)}mat.dispose()}
