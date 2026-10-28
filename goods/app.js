@@ -41,29 +41,43 @@ if(o.type==='rack'){for(const x of [-.7,.7]){box(g,.07,1.8,.07,x,.9,0,c);box(g,.
 if(o.mount?.mode==='clothing'){
  const parent=state.objects.find(f=>f.id===o.mount.target),onRack=parent?.name==='의류 행거';
  const design=state.designs.find(d=>d.id===o.design);
- // Display the user's actual uploaded image, preserving its native aspect ratio and PNG alpha.
- // Never substitute an opaque monochrome shirt for a successful uploaded design.
- const top=onRack?.69:.83;
+ const top=onRack?1.48:1.55;
  if(design?.src){
-   const imageTexture=new T.TextureLoader().load(design.src);
-   imageTexture.colorSpace=T.SRGBColorSpace;
-   const ratio=T.MathUtils.clamp((design.width||1)/(design.height||1),.2,5);
-   const maxW=onRack?.50:.64,maxH=onRack?.68:.85;
-   const iw=Math.min(maxW,maxH*ratio),ih=iw/ratio;
-   const art=new T.Mesh(new T.PlaneGeometry(iw,ih),new T.MeshBasicMaterial({map:imageTexture,transparent:true,alphaTest:.015,side:T.DoubleSide,depthWrite:false}));
-   art.position.set(0,top-ih/2, onRack?.035:.20);
-   art.renderOrder=6;
-   g.add(art);
+  const holder=new T.Group();g.add(holder);
+  const image=new Image();
+  image.onload=()=>{
+   if(!holder.parent)return;
+   const scale=Math.min(1,800/Math.max(image.width,image.height));
+   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));
+   const cx=canvas.getContext('2d',{willReadFrequently:true});cx.drawImage(image,0,0,canvas.width,canvas.height);
+   const w=canvas.width,h=canvas.height,pixels=cx.getImageData(0,0,w,h),a=pixels.data;
+   // Remove only background pixels connected to an image edge. Preserve enclosed whites on clothing.
+   const corners=[0,(w-1)*4,(w*(h-1))*4,(w*h-1)*4],rgb=[0,1,2].map(k=>corners.map(i=>a[i+k]).sort((x,y)=>x-y)[2]);
+   const near=(p)=>{const r=a[p],g=a[p+1],b=a[p+2];const dist=Math.sqrt((r-rgb[0])**2+(g-rgb[1])**2+(b-rgb[2])**2);return a[p+3]<15||dist<44||(Math.min(r,g,b)>235&&Math.max(...rgb)>220)};
+   let seen=new Uint8Array(w*h),queue=new Int32Array(w*h),head=0,tail=0;
+   const seed=k=>{if(seen[k]||!near(k*4))return;seen[k]=1;queue[tail++]=k};
+   for(let x=0;x<w;x++){seed(x);seed((h-1)*w+x)}
+   for(let y=0;y<h;y++){seed(y*w);seed(y*w+w-1)}
+   while(head<tail){const k=queue[head++],x=k%w,y=(k-x)/w;a[k*4+3]=0;if(x>0)seed(k-1);if(x+1<w)seed(k+1);if(y>0)seed(k-w);if(y+1<h)seed(k+w)}
+   let minX=w,minY=h,maxX=-1,maxY=-1;for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(a[(y*w+x)*4+3]>20){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}}
+   if(maxX<0){minX=0;minY=0;maxX=w-1;maxY=h-1}
+   cx.putImageData(pixels,0,0);
+   const crop=document.createElement('canvas');crop.width=maxX-minX+1;crop.height=maxY-minY+1;crop.getContext('2d').drawImage(canvas,minX,minY,crop.width,crop.height,0,0,crop.width,crop.height);
+   const tex=new T.CanvasTexture(crop);tex.colorSpace=T.SRGBColorSpace;
+   const ratio=crop.width/crop.height,maxW=onRack?.53:.68,maxH=onRack?.78:.96,iw=Math.min(maxW,maxH*ratio),ih=iw/ratio;
+   const mesh=new T.Mesh(new T.PlaneGeometry(iw,ih),new T.MeshBasicMaterial({map:tex,transparent:true,alphaTest:.12,side:T.DoubleSide,depthWrite:true}));
+   mesh.position.set(0,top-ih/2,onRack?.075:.24);mesh.renderOrder=7;holder.add(mesh);
+  };
+  image.onerror=()=>toast('이 굿즈의 원본 이미지를 불러오지 못했습니다. 이미지 목록에서 다시 선택해 주세요.');
+  image.src=design.src;
  }else{
-   // A missing legacy image reference remains a visible placeholder, without rewriting saved data.
-   const shade=o.color||'#b8a49b';
-   box(g,.44,.54,.035,0,top-.28,0,shade);
+  const warn=new T.Mesh(new T.PlaneGeometry(.42,.62),new T.MeshBasicMaterial({color:'#aaaaaa',side:T.DoubleSide}));
+  warn.position.set(0,top-.31,.2);g.add(warn);
  }
  if(onRack){
-   const hanger=new T.Mesh(new T.TorusGeometry(.044,.009,8,16,Math.PI*1.4),material('#555555'));
-   hanger.position.set(0,top+.06,0);hanger.rotation.z=.48;g.add(hanger);
-   const arm=new T.Mesh(new T.CylinderGeometry(.009,.009,.54,8),material('#666666'));
-   arm.rotation.z=Math.PI/2;arm.position.set(0,top-.005,0);g.add(arm);
+  const hook=new T.Mesh(new T.TorusGeometry(.045,.009,8,16,Math.PI*1.4),material('#555555'));
+  hook.position.set(0,top+.07,0);hook.rotation.z=.48;g.add(hook);
+  const bar=new T.Mesh(new T.CylinderGeometry(.009,.009,.51,8),material('#666666'));bar.rotation.z=Math.PI/2;bar.position.set(0,top,0);g.add(bar);
  }
  }else if(o.type==='photo'){const d=state.designs.find(d=>d.id===o.design);const ratio=T.MathUtils.clamp((d?.width||512)/(d?.height||512),.1,10),h=.7,w=h*ratio,depth=(o.photoThickness||3)/100;const tex=new T.TextureLoader().load(d?.src||'');tex.colorSpace=T.SRGBColorSpace;const mat=new T.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.08,side:T.DoubleSide,roughness:.75});for(const z of [-depth/2,depth/2]){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,z);if(z<0)m.rotation.y=Math.PI;m.castShadow=true;g.add(m)}const layers=Math.min(12,Math.max(2,Math.round(depth*100)));for(let n=1;n<layers;n++){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,-depth/2+depth*n/layers);g.add(m)}mat.dispose()}
 if(['pillow','bodypillow'].includes(o.type)){const w=o.type==='pillow'?.65:.42,h=o.type==='pillow'?.45:1.15,depth=o.type==='pillow'?.18:.23,exponent=o.type==='pillow'?.5:.72;const geo=new T.SphereGeometry(1,48,32),pos=geo.attributes.position,uv=geo.attributes.uv;const rounded=v=>Math.sign(v)*Math.pow(Math.abs(v),exponent);for(let n=0;n<pos.count;n++){const x=rounded(pos.getX(n))*w/2,y=rounded(pos.getY(n))*h/2,z=rounded(pos.getZ(n))*depth/2;pos.setXYZ(n,x,y,z);uv.setXY(n,x/w+.5,y/h+.5)}geo.computeVertexNormals();const m=new T.Mesh(geo,new T.MeshStandardMaterial({map:texture(o),roughness:.95}));m.position.y=h/2;m.castShadow=true;m.receiveShadow=true;g.add(m);const points=[];for(let n=0;n<=96;n++){const a=n/96*Math.PI*2;points.push(new T.Vector3(rounded(Math.cos(a))*w/2,rounded(Math.sin(a))*h/2+h/2,0))}const seam=new T.Line(new T.BufferGeometry().setFromPoints(points),new T.LineBasicMaterial({color:new T.Color(o.color).multiplyScalar(.82)}));g.add(seam)}
@@ -150,7 +164,7 @@ $('photoThickness').oninput=()=>{const o=state.objects.find(o=>o.id===selected);
 
 function wallTargets(){const w=state.width/2,d=state.depth/2;const a=[{id:'back',name:'뒤쪽 벽',a:[-w,-d],b:[w,-d],n:[0,1],height:2.7},{id:'left-upper',name:'왼쪽 벽 · 출입구 위',a:[-w,-d],b:[-w,1.55],n:[1,0],height:2.7},{id:'left-lower',name:'왼쪽 벽 · 출입구 아래',a:[-w,2.4],b:[-w,d],n:[1,0],height:2.7},{id:'right',name:'오른쪽 벽',a:[w,-d],b:[w,d],n:[-1,0],height:1.1},{id:'front',name:'앞쪽 벽',a:[-w,d],b:[w,d],n:[0,-1],height:1.1}];for(const i of linkedPlan?.items||[]){if(i.kind!=='wall')continue;const p=[i.x1/100-4,i.y1/100-3],q=[i.x2/100-4,i.y2/100-3],dx=q[0]-p[0],dz=q[1]-p[1],len=Math.hypot(dx,dz);if(len<.01)continue;let n=[-dz/len,dx/len];if(n[0]*(-(p[0]+q[0])/2)+n[1]*(-(p[1]+q[1])/2)<0)n=n.map(v=>-v);a.push({id:'plan-'+i.id,name:'가벽 '+i.id,a:p,b:q,n,height:2.35,thickness:(i.thickness||12)/100})}return a}
 function mountUI(o){const mode=o.mount?.mode||'free';if(!$('mountMode').querySelector('option[value="clothing"]')){$('mountMode').add(new Option('👕 의류 진열 · 마네킹 / 옷걸이','clothing'))}$('mountMode').value=mode;$('mountTargetLabel').hidden=mode==='free';$('mountAlongLabel').hidden=mode!=='wall';$('mountHeightLabel').hidden=mode!=='wall';const list=mode==='wall'?wallTargets():mode==='clothing'?state.objects.filter(f=>f.type==='external'&&['마네킹','의류 행거'].includes(f.name)).map(f=>({id:f.id,name:f.name+(f.name==='마네킹'?' · 착용':' · 옷걸이')})):state.objects.filter(f=>f.kind==='furniture'&&f.surfaceHeight).map(f=>({id:f.id,name:f.name}));$('mountTarget').replaceChildren();for(const f of list){const op=document.createElement('option');op.value=f.id;op.textContent=f.name;$('mountTarget').append(op)}$('mountTarget').value=o.mount?.target||list[0]?.id||'';const f=state.objects.find(f=>f.id===$('mountTarget').value);$('mountLevelLabel').hidden=mode!=='surface'||!f||!['진열 선반','벽면 진열대','이동식 진열대'].includes(f.name);$('mountLevel').value=o.mount?.level||0;$('mountAlong').value=o.mount?.along??.5;$('mountHeight').value=o.mount?.height??1.2}
-function applyMount(o){const m=o.mount;if(!m||m.mode==='free')return;if(m.mode==='clothing'){const f=state.objects.find(f=>f.id===m.target&&f.type==='external'&&['마네킹','의류 행거'].includes(f.name));if(!f){o.mount=null;o.parent=null;return}o.parent=f.id;const a=(f.sourceRotation||0)*Math.PI/180;o.rot=f.sourceRotation||0;if(f.name==='마네킹'){o.x=f.x;o.z=f.z;o.y=1.01}else{const n=state.objects.filter(x=>x.kind==='goods'&&x.mount?.mode==='clothing'&&x.mount?.target===f.id).sort((a,b)=>a.id.localeCompare(b.id));const slot=Math.max(0,n.findIndex(x=>x.id===o.id));const count=Math.max(1,n.length);const offset=(slot-(count-1)/2)*Math.min(.22,(f.sourceWidth/100*.75)/count);o.x=f.x+Math.cos(a)*offset;o.z=f.z-Math.sin(a)*offset;o.y=1.15}return}
+function applyMount(o){const m=o.mount;if(!m||m.mode==='free')return;if(m.mode==='clothing'){const f=state.objects.find(f=>f.id===m.target&&f.type==='external'&&['마네킹','의류 행거'].includes(f.name));if(!f){o.mount=null;o.parent=null;return}o.parent=f.id;const a=(f.sourceRotation||0)*Math.PI/180;o.rot=f.sourceRotation||0;if(f.name==='마네킹'){o.x=f.x;o.z=f.z;o.y=0}else{const n=state.objects.filter(x=>x.kind==='goods'&&x.mount?.mode==='clothing'&&x.mount?.target===f.id).sort((a,b)=>a.id.localeCompare(b.id));const slot=Math.max(0,n.findIndex(x=>x.id===o.id));const count=Math.max(1,n.length);const offset=(slot-(count-1)/2)*Math.min(.22,(f.sourceWidth/100*.75)/count);o.x=f.x+Math.cos(a)*offset;o.z=f.z-Math.sin(a)*offset;o.y=0}return}
 if(m.mode==='surface'){const f=state.objects.find(f=>f.id===m.target&&f.surfaceHeight);if(!f){o.mount=null;o.parent=null;return}if(o.parent!==f.id){o.x=f.x;o.z=f.z}o.parent=f.id;const level=Number(m.level)||0;o.y=f.surfaceHeight*(level===1?.66:level===2?.34:1);return}const w=wallTargets().find(w=>w.id===m.target);if(!w){o.mount=null;o.parent=null;return}const t=T.MathUtils.clamp(Number(m.along)||.5,.05,.95),offset=(w.thickness||.12)/2+(o.type==='photo'?(o.photoThickness||3)/200:.1)+.02;o.x=w.a[0]+(w.b[0]-w.a[0])*t+w.n[0]*offset;o.z=w.a[1]+(w.b[1]-w.a[1])*t+w.n[1]*offset;o.rot=(Math.atan2(w.n[0],w.n[1])*180/Math.PI+360)%360;o.y=T.MathUtils.clamp(Number(m.height)||0,0,Math.max(0,w.height-.7*o.scale));m.height=o.y;o.parent=null}
 function changeMount(){const o=state.objects.find(o=>o.id===selected);if(o?.kind!=='goods')return;const mode=$('mountMode').value;if(mode==='free'){o.mount=null;o.parent=null;updateUI();save();return}o.mount={mode,target:$('mountTarget').value,level:Number($('mountLevel').value),along:Number($('mountAlong').value),height:Number($('mountHeight').value)};applyMount(o);rebuild(o);updateUI();save()}
 $('mountMode').onchange=()=>{const o=state.objects.find(o=>o.id===selected);if(!o)return;o.mount={mode:$('mountMode').value};mountUI(o);if(o.mount.mode==='clothing'&&!$('mountTarget').options.length){toast('평면도에 마네킹이나 의류행거를 추가한 뒤 다시 선택해 주세요.');o.mount=null;mountUI(o);return}changeMount()};for(const id of ['mountTarget','mountLevel','mountHeight','mountAlong'])$(id).onchange=changeMount;
