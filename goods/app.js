@@ -10,15 +10,16 @@ function setQuality(enabled){
  $('qualityMode').textContent=highQuality?'✓ 고품질 3D 켜짐':'✦ 고품질 3D 보기';
  $('qualityMode').classList.toggle('active',highQuality);
  renderer.setPixelRatio(Math.min(devicePixelRatio||1,highQuality?2:1.6));
- renderer.toneMapping=highQuality?T.ACESFilmicToneMapping:T.NoToneMapping;
- renderer.toneMappingExposure=highQuality?1.15:previousExposure;
+ // Preserve student-selected colors: cinematic tone mapping shifts hues and washes out finishes.
+ renderer.toneMapping=T.NoToneMapping;
+ renderer.toneMappingExposure=previousExposure;
  renderer.shadowMap.type=T.PCFSoftShadowMap;
- scene.background.set(highQuality?'#d9e0e2':'#edece7');
+ scene.background.set('#edece7');
  qualityLighting.clear();
  if(highQuality){
-  const fill=new T.AmbientLight(0xffffff,.55);qualityLighting.add(fill);
-  for(const [x,z,power] of [[-2.5,-1.5,65],[0,-1.5,75],[2.5,-1.5,65],[-2.5,1.5,60],[0,1.5,75],[2.5,1.5,60]]){
-   const lamp=new T.SpotLight(0xfff4df,power,8,Math.PI/3,.65,2);lamp.position.set(x,2.58,z);lamp.target.position.set(x,.05,z);qualityLighting.add(lamp,lamp.target);
+  const fill=new T.AmbientLight(0xffffff,.12);qualityLighting.add(fill);
+  for(const [x,z,power] of [[-2.5,-1.5,3],[0,-1.5,3.5],[2.5,-1.5,3],[-2.5,1.5,3],[0,1.5,3.5],[2.5,1.5,3]]){
+   const lamp=new T.SpotLight(0xffffff,power,8,Math.PI/3,.75,2);lamp.position.set(x,2.58,z);lamp.target.position.set(x,.05,z);qualityLighting.add(lamp,lamp.target);
   }
  }
  buildRoom();
