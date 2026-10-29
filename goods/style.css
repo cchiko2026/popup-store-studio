@@ -11,3 +11,8 @@
 .viewtools .quality-button{background:#172e25;color:white;border-radius:7px;padding:9px 12px;font-weight:700;white-space:nowrap}
 .viewtools .quality-button:hover,.viewtools .quality-button.active{background:#4b6744;color:white}
 @media(max-width:730px){.viewtools{left:8px;top:8px;gap:2px}.viewtools button{padding:7px 8px}.viewtools .quality-button{order:-1}}
+
+/* Final artwork mode: keep toggle accessible in both orbit and walking views. */
+.visittools .quality-button{background:#172e25;color:#fff;border:0;border-radius:7px;padding:9px 12px;font-weight:700;white-space:nowrap}
+.visittools .quality-button:hover,.visittools .quality-button.active{background:#4b6744;color:#fff}
+@media(max-width:800px){.visittools{flex-wrap:wrap;max-width:100%;gap:5px}.visittools .quality-button{order:-1}}
