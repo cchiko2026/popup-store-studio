@@ -106,18 +106,43 @@ if(o.mount?.mode==='clothing'){
    const crop=document.createElement('canvas');crop.width=maxX-minX+1;crop.height=maxY-minY+1;crop.getContext('2d').drawImage(canvas,minX,minY,crop.width,crop.height,0,0,crop.width,crop.height);
    const tex=new T.CanvasTexture(crop);tex.colorSpace=T.SRGBColorSpace;
    const ratio=crop.width/crop.height,maxW=onRack?.53:.68,maxH=onRack?.78:.96,iw=Math.min(maxW,maxH*ratio),ih=iw/ratio;
-   // A subdivided cloth surface wraps around the mannequin torso instead of floating as a flat poster.
-   // Rack display retains a nearly flat drape so its shoulders align with the hanger.
-   const geometry=new T.PlaneGeometry(iw,ih,16,20),pos=geometry.attributes.position,uv=geometry.attributes.uv;
-   for(let j=0;j<pos.count;j++){
-    const x=pos.getX(j),y=pos.getY(j),nx=x/(iw/2),v=uv.getY(j);
-    const curve=onRack?.012:.12*(1-nx*nx)*(.65+.35*v);
-    const waist=onRack?1:(v>.30&&v<.72?.94:1);
-    pos.setXYZ(j,x*waist,y,curve);
+   const mat=new T.MeshBasicMaterial({map:tex,color:0xffffff,transparent:true,alphaTest:.025,side:T.DoubleSide,depthWrite:true,toneMapped:false});
+   if(onRack){
+    const geo=new T.PlaneGeometry(iw,ih,16,16),pos=geo.attributes.position;
+    for(let j=0;j<pos.count;j++){const x=pos.getX(j);pos.setZ(j,.014*(1-(x/(iw/2))**2))}
+    geo.computeVertexNormals();
+    const mesh=new T.Mesh(geo,mat);mesh.position.set(0,top-ih/2,.065);holder.add(mesh);
+   }else{
+    // Clothing mockup: map the uploaded torso artwork around a curved front and both sleeves.
+    // The unmodified uploaded PNG remains the texture; body and sleeve UVs sample separate image areas.
+    const bodyW=Math.min(.49,iw*.76),bodyH=Math.min(.78,ih),topY=top-.025;
+    const body=new T.PlaneGeometry(bodyW,bodyH,24,24),bp=body.attributes.position,bu=body.attributes.uv;
+    for(let j=0;j<bp.count;j++){
+      const x=bp.getX(j),v=bu.getY(j),u=bu.getX(j),nx=x/(bodyW/2);
+      bp.setXYZ(j,x*(.96+.04*v),bp.getY(j),.185+.115*(1-nx*nx));
+      bu.setXY(j,.19+u*.62,.07+v*.86);
+    }
+    body.computeVertexNormals();
+    const front=new T.Mesh(body,mat);front.position.y=topY-bodyH/2;holder.add(front);
+    // Sleeves taper toward the elbow and angle outward, following the mannequin arms.
+    for(const side of [-1,1]){
+      const geo=new T.PlaneGeometry(.235,.39,10,14),p=geo.attributes.position,uv=geo.attributes.uv;
+      for(let j=0;j<p.count;j++){
+        const v=uv.getY(j),u=uv.getX(j),down=1-v;
+        const width=.89+.11*v;
+        p.setXYZ(j,p.getX(j)*width+side*(.045*down),p.getY(j),.13+.038*(1-Math.pow((u-.5)*2,2)));
+        uv.setXY(j,side===-1?.02+u*.22:.76+u*.22,.48+v*.48);
+      }
+      geo.computeVertexNormals();
+      const sleeve=new T.Mesh(geo,mat);
+      sleeve.position.set(side*.325,topY-.24,.045);
+      sleeve.rotation.z=side*.32;
+      holder.add(sleeve);
+    }
+    // Subtle cloth backing for depth while retaining the image's original surface colors.
+    const back=new T.Mesh(new T.PlaneGeometry(bodyW*.93,bodyH*.96),new T.MeshStandardMaterial({color:o.color||'#dedbd6',side:T.DoubleSide,roughness:1}));
+    back.position.set(0,topY-bodyH/2,-.11);holder.add(back);
    }
-   geometry.computeVertexNormals();
-   const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({map:tex,color:0xffffff,transparent:true,alphaTest:.025,side:T.DoubleSide,depthWrite:true,toneMapped:false}));
-   mesh.position.set(0,top-ih/2,onRack?.065:.115);mesh.renderOrder=7;holder.add(mesh);
   };
   image.onerror=()=>toast('이 굿즈의 원본 이미지를 불러오지 못했습니다. 이미지 목록에서 다시 선택해 주세요.');
   image.src=design.src;
