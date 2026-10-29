@@ -94,7 +94,7 @@ if(o.mount?.mode==='clothing'){
    const w=canvas.width,h=canvas.height,pixels=cx.getImageData(0,0,w,h),a=pixels.data;
    // Remove only background pixels connected to an image edge. Preserve enclosed whites on clothing.
    const corners=[0,(w-1)*4,(w*(h-1))*4,(w*h-1)*4],rgb=[0,1,2].map(k=>corners.map(i=>a[i+k]).sort((x,y)=>x-y)[2]);
-   const near=(p)=>{const r=a[p],g=a[p+1],b=a[p+2];const dist=Math.sqrt((r-rgb[0])**2+(g-rgb[1])**2+(b-rgb[2])**2);return a[p+3]<15||dist<44||(Math.min(r,g,b)>235&&Math.max(...rgb)>220)};
+   const near=(p)=>{const r=a[p],g=a[p+1],b=a[p+2];const dist=Math.sqrt((r-rgb[0])**2+(g-rgb[1])**2+(b-rgb[2])**2);return a[p+3]<15||dist<18};
    let seen=new Uint8Array(w*h),queue=new Int32Array(w*h),head=0,tail=0;
    const seed=k=>{if(seen[k]||!near(k*4))return;seen[k]=1;queue[tail++]=k};
    for(let x=0;x<w;x++){seed(x);seed((h-1)*w+x)}
@@ -116,7 +116,7 @@ if(o.mount?.mode==='clothing'){
     pos.setXYZ(j,x*waist,y,curve);
    }
    geometry.computeVertexNormals();
-   const mesh=new T.Mesh(geometry,new T.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.15,side:T.DoubleSide,depthWrite:true,roughness:.94,metalness:0}));
+   const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({map:tex,color:0xffffff,transparent:true,alphaTest:.025,side:T.DoubleSide,depthWrite:true,toneMapped:false}));
    mesh.position.set(0,top-ih/2,onRack?.065:.115);mesh.renderOrder=7;holder.add(mesh);
   };
   image.onerror=()=>toast('이 굿즈의 원본 이미지를 불러오지 못했습니다. 이미지 목록에서 다시 선택해 주세요.');
