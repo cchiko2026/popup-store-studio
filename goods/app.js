@@ -7,8 +7,7 @@ let highQuality=false,qualityLighting=new T.Group();scene.add(qualityLighting);
 const previousExposure=renderer.toneMappingExposure;
 function setQuality(enabled){
  highQuality=!!enabled;
- $('qualityMode').textContent=highQuality?'✓ 고품질 3D 켜짐':'✦ 고품질 3D 보기';
- $('qualityMode').classList.toggle('active',highQuality);
+ for(const id of ['qualityMode','qualityModeVisit']){const b=$(id);if(!b)continue;b.textContent=highQuality?'✓ 최종 작품보기 종료':'✦ 최종 작품보기';b.classList.toggle('active',highQuality);b.setAttribute('aria-pressed',String(highQuality));}
  renderer.setPixelRatio(Math.min(devicePixelRatio||1,highQuality?2:1.6));
  // Preserve student-selected colors: cinematic tone mapping shifts hues and washes out finishes.
  renderer.toneMapping=T.NoToneMapping;
@@ -25,7 +24,7 @@ function setQuality(enabled){
  buildRoom();
  resize();
 }
-$('qualityMode').onclick=()=>setQuality(!highQuality);
+$('qualityMode').onclick=()=>setQuality(!highQuality);$('qualityModeVisit').onclick=()=>setQuality(!highQuality);
 let room=new T.Group();scene.add(room);const ground=new T.Plane(new T.Vector3(0,1,0),0),ray=new T.Raycaster(),pointer=new T.Vector2(),target=new T.Vector3(0,.5,0);
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').style.opacity=0,3500)}
 const uid=()=>crypto.randomUUID();const material=c=>new T.MeshStandardMaterial({color:c,roughness:.7});
@@ -33,6 +32,7 @@ function box(g,w,h,d,x,y,z,c){const m=new T.Mesh(new T.BoxGeometry(w,h,d),materi
 function cylinder(g,r,h,x,y,z,c){const m=new T.Mesh(new T.CylinderGeometry(r,r,h,40),material(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m}
 function release(g){g.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){m.map?.dispose();m.dispose()}}})}
 function buildRoom(){scene.remove(room);release(room);room=new T.Group();scene.add(room);const floorMesh=box(room,state.width,.12,state.depth,0,-.06,0,state.floor);
+if(highQuality){const plinth=box(room,state.width+.18,.23,state.depth+.18,0,-.235,0,'#b8ada1');plinth.material.roughness=.92;}
 if(highQuality){
  const c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');
  ctx.fillStyle=state.floor;ctx.fillRect(0,0,512,512);
@@ -53,7 +53,7 @@ box(room,.12,highQuality&&visiting?2.7:1.1,state.depth,right,highQuality&&visiti
 box(room,state.width,highQuality&&visiting?2.7:1.1,.12,0,highQuality&&visiting?1.35:.55,front,state.wall);
 const minor=[],major=[];for(let n=0;n<=Math.round(state.width*10);n++){const x=left+n/10;(n%5===0?major:minor).push(x,.008,back,x,.008,front)}for(let n=0;n<=Math.round(state.depth*10);n++){const z=back+n/10;(n%5===0?major:minor).push(left,.008,z,right,.008,z)}
 for(const [points,color]of highQuality?[]:[[minor,0xdaddd2],[major,0xc4c9bb]]){const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(points,3));room.add(new T.LineSegments(geometry,new T.LineBasicMaterial({color})))}
-const doorPoints=[left,.018,doorEnd,left+.85,.018,doorEnd];const arc=[];for(let n=0;n<=24;n++){const a=-Math.PI/2+n*Math.PI/48;arc.push(new T.Vector3(left+.85*Math.cos(a),.02,doorEnd+.85*Math.sin(a)))}const doorGeo=new T.BufferGeometry();doorGeo.setAttribute('position',new T.Float32BufferAttribute(doorPoints,3));room.add(new T.LineSegments(doorGeo,new T.LineBasicMaterial({color:0x78886a})));room.add(new T.Line(new T.BufferGeometry().setFromPoints(arc),new T.LineBasicMaterial({color:0x78886a})));
+const doorPoints=[left,.018,doorEnd,left+.85,.018,doorEnd];const arc=[];for(let n=0;n<=24;n++){const a=-Math.PI/2+n*Math.PI/48;arc.push(new T.Vector3(left+.85*Math.cos(a),.02,doorEnd+.85*Math.sin(a)))}const doorGeo=new T.BufferGeometry();doorGeo.setAttribute('position',new T.Float32BufferAttribute(doorPoints,3));if(!highQuality){room.add(new T.LineSegments(doorGeo,new T.LineBasicMaterial({color:0x78886a})));room.add(new T.Line(new T.BufferGeometry().setFromPoints(arc),new T.LineBasicMaterial({color:0x78886a}))) }
 if(embedded&&linkedPlan)for(const route of linkedPlan.routes||[]){const pts=route.map(p=>new T.Vector3(p.x/100-4,.022,p.y/100-3));if(pts.length>1)room.add(new T.Line(new T.BufferGeometry().setFromPoints(pts),new T.LineBasicMaterial({color:0x3b5737})))}
 for(const mesh of room.children.filter(o=>o.isMesh&&o.geometry?.type==='BoxGeometry'&&o.position.y>0)){mesh.material.transparent=!visiting;mesh.material.opacity=visiting?1:.18;mesh.material.depthWrite=visiting}
 const c=document.createElement('canvas');c.width=1024;c.height=256;const cx=c.getContext('2d');cx.fillStyle=state.wall;cx.fillRect(0,0,1024,256);cx.fillStyle='#324b37';cx.textAlign='center';cx.font='bold 60px sans-serif';cx.fillText(state.name,512,125);cx.font='22px sans-serif';cx.fillText('MY POP-UP STORE',512,182);const texture=new T.CanvasTexture(c),sign=new T.Mesh(new T.PlaneGeometry(3,.75),new T.MeshBasicMaterial({map:texture}));sign.position.set(0,2.08,-state.depth/2+.07);room.add(sign);$('nameDisplay').textContent=state.name}
