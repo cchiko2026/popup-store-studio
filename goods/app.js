@@ -22,6 +22,8 @@ function setQuality(enabled){
   }
  }
  buildRoom();
+ // External furniture meshes need rebuilding when presentation opacity changes.
+ for(const o of state.objects.filter(o=>o.type==='external'))rebuild(o);
  resize();
 }
 $('qualityMode').onclick=()=>setQuality(!highQuality);$('qualityModeVisit').onclick=()=>setQuality(!highQuality);
@@ -60,7 +62,13 @@ const c=document.createElement('canvas');c.width=1024;c.height=256;const cx=c.ge
 function texture(o){const c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');ctx.fillStyle=o.color;ctx.fillRect(0,0,512,512);const tex=new T.CanvasTexture(c);tex.colorSpace=T.SRGBColorSpace;const d=state.designs.find(d=>d.id===o.design);if(d){const im=new Image();im.onload=()=>{ctx.save();ctx.translate(256+(o.printX||0)*512,256+(o.printY||0)*512);ctx.rotate((o.printRotation||0)*Math.PI/180);const ratio=Math.min(380/im.width,380/im.height)*(o.printScale||1);ctx.drawImage(im,-im.width*ratio/2,-im.height*ratio/2,im.width*ratio,im.height*ratio);ctx.restore();tex.needsUpdate=true};im.src=d.src}return tex}
 function front(g,o,w,h,z,y){const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({map:texture(o),roughness:.8,side:T.DoubleSide}));m.position.set(0,y,z);g.add(m)}
 function build(o){const g=new T.Group(),c=o.color;if(o.type==='external'){
-for(const f of o.faces||[]){const positions=[];for(let n=1;n<f.points.length-1;n++)for(const pt of [f.points[0],f.points[n],f.points[n+1]])positions.push(...pt);const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.computeVertexNormals();const mat=new T.MeshStandardMaterial({color:f.color,side:T.DoubleSide,roughness:o.finish==='gloss'?.2:.7,metalness:o.finish==='metal'?.75:0,transparent:o.sourceKind==='wall'&&!visiting||/rgba/.test(f.color),depthWrite:!(o.sourceKind==='wall'&&!visiting),opacity:o.sourceKind==='wall'&&!visiting?.25:/rgba/.test(f.color)?.35:1});const mesh=new T.Mesh(geo,mat);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh)}
+for(const f of o.faces||[]){const positions=[];for(let n=1;n<f.points.length-1;n++)for(const pt of [f.points[0],f.points[n],f.points[n+1]])positions.push(...pt);const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.computeVertexNormals();const rgba=/rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/.exec(String(f.color));
+const actualColor=rgba?`rgb(${rgba[1]},${rgba[2]},${rgba[3]})`:f.color;
+const isWall=o.sourceKind==='wall',isGlass=o.finish==='glass';
+const glassOpacity=rgba?Math.max(.18,Math.min(1,Number(rgba[4]))):.38;
+const transparent=highQuality?isGlass:(isWall&&!visiting||!!rgba);
+const opacity=highQuality?(isGlass?glassOpacity:1):(isWall&&!visiting?.25:rgba?.35:1);
+const mat=new T.MeshStandardMaterial({color:actualColor,side:T.DoubleSide,roughness:o.finish==='gloss'?.2:.7,metalness:o.finish==='metal'?.75:0,transparent,opacity,depthWrite:!transparent});const mesh=new T.Mesh(geo,mat);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh)}
 }else if(o.kind==='furniture'){
 if(o.type==='table'){box(g,1.7,.1,.85,0,.85,0,c);for(const x of [-.7,.7])for(const z of [-.32,.32])box(g,.08,.8,.08,x,.4,z,'#343a33')}
 if(o.type==='pedestal')box(g,.9,1,.9,0,.5,0,c);
