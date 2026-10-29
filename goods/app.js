@@ -48,8 +48,8 @@ box(room,.12,2.7,doorStart-back,left,1.35,(back+doorStart)/2,state.wall);
 box(room,.12,2.7,front-doorEnd,left,1.35,(doorEnd+front)/2,state.wall);
 box(room,.12,.3,.85,left,2.55,(doorStart+doorEnd)/2,state.wall);
 // Low outer walls retain a clear cutaway view, matching the legacy 3D preview.
-box(room,.12,highQuality?2.7:1.1,state.depth,right,highQuality?1.35:.55,0,state.wall);
-box(room,state.width,highQuality?2.7:1.1,.12,0,highQuality?1.35:.55,front,state.wall);
+box(room,.12,highQuality&&visiting?2.7:1.1,state.depth,right,highQuality&&visiting?1.35:.55,0,state.wall);
+box(room,state.width,highQuality&&visiting?2.7:1.1,.12,0,highQuality&&visiting?1.35:.55,front,state.wall);
 const minor=[],major=[];for(let n=0;n<=Math.round(state.width*10);n++){const x=left+n/10;(n%5===0?major:minor).push(x,.008,back,x,.008,front)}for(let n=0;n<=Math.round(state.depth*10);n++){const z=back+n/10;(n%5===0?major:minor).push(left,.008,z,right,.008,z)}
 for(const [points,color]of highQuality?[]:[[minor,0xdaddd2],[major,0xc4c9bb]]){const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(points,3));room.add(new T.LineSegments(geometry,new T.LineBasicMaterial({color})))}
 const doorPoints=[left,.018,doorEnd,left+.85,.018,doorEnd];const arc=[];for(let n=0;n<=24;n++){const a=-Math.PI/2+n*Math.PI/48;arc.push(new T.Vector3(left+.85*Math.cos(a),.02,doorEnd+.85*Math.sin(a)))}const doorGeo=new T.BufferGeometry();doorGeo.setAttribute('position',new T.Float32BufferAttribute(doorPoints,3));room.add(new T.LineSegments(doorGeo,new T.LineBasicMaterial({color:0x78886a})));room.add(new T.Line(new T.BufferGeometry().setFromPoints(arc),new T.LineBasicMaterial({color:0x78886a})));
