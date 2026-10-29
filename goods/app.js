@@ -82,7 +82,7 @@ if(o.type==='rack'){for(const x of [-.7,.7]){box(g,.07,1.8,.07,x,.9,0,c);box(g,.
 if(o.mount?.mode==='clothing'){
  const parent=state.objects.find(f=>f.id===o.mount.target),onRack=parent?.name==='의류 행거';
  const design=state.designs.find(d=>d.id===o.design);
- const top=onRack?1.48:1.55; // Parent group's vertical position is the adjustable clothing offset.
+ const top=onRack?1.56:1.54; // Shoulder-level garment placement; o.y remains the saved vertical offset.
  if(design?.src){
   const holder=new T.Group();g.add(holder);
   const image=new Image();
@@ -106,8 +106,18 @@ if(o.mount?.mode==='clothing'){
    const crop=document.createElement('canvas');crop.width=maxX-minX+1;crop.height=maxY-minY+1;crop.getContext('2d').drawImage(canvas,minX,minY,crop.width,crop.height,0,0,crop.width,crop.height);
    const tex=new T.CanvasTexture(crop);tex.colorSpace=T.SRGBColorSpace;
    const ratio=crop.width/crop.height,maxW=onRack?.53:.68,maxH=onRack?.78:.96,iw=Math.min(maxW,maxH*ratio),ih=iw/ratio;
-   const mesh=new T.Mesh(new T.PlaneGeometry(iw,ih),new T.MeshBasicMaterial({map:tex,transparent:true,alphaTest:.12,side:T.DoubleSide,depthWrite:true}));
-   mesh.position.set(0,top-ih/2,onRack?.075:.24);mesh.renderOrder=7;holder.add(mesh);
+   // A subdivided cloth surface wraps around the mannequin torso instead of floating as a flat poster.
+   // Rack display retains a nearly flat drape so its shoulders align with the hanger.
+   const geometry=new T.PlaneGeometry(iw,ih,16,20),pos=geometry.attributes.position,uv=geometry.attributes.uv;
+   for(let j=0;j<pos.count;j++){
+    const x=pos.getX(j),y=pos.getY(j),nx=x/(iw/2),v=uv.getY(j);
+    const curve=onRack?.012:.12*(1-nx*nx)*(.65+.35*v);
+    const waist=onRack?1:(v>.30&&v<.72?.94:1);
+    pos.setXYZ(j,x*waist,y,curve);
+   }
+   geometry.computeVertexNormals();
+   const mesh=new T.Mesh(geometry,new T.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.15,side:T.DoubleSide,depthWrite:true,roughness:.94,metalness:0}));
+   mesh.position.set(0,top-ih/2,onRack?.065:.115);mesh.renderOrder=7;holder.add(mesh);
   };
   image.onerror=()=>toast('이 굿즈의 원본 이미지를 불러오지 못했습니다. 이미지 목록에서 다시 선택해 주세요.');
   image.src=design.src;
@@ -117,8 +127,8 @@ if(o.mount?.mode==='clothing'){
  }
  if(onRack){
   const hook=new T.Mesh(new T.TorusGeometry(.045,.009,8,16,Math.PI*1.4),material('#555555'));
-  hook.position.set(0,top+.07,0);hook.rotation.z=.48;g.add(hook);
-  const bar=new T.Mesh(new T.CylinderGeometry(.009,.009,.51,8),material('#666666'));bar.rotation.z=Math.PI/2;bar.position.set(0,top,0);g.add(bar);
+  hook.position.set(0,top+.12,0);hook.rotation.z=.48;g.add(hook);
+  const bar=new T.Mesh(new T.CylinderGeometry(.009,.009,.51,8),material('#666666'));bar.rotation.z=Math.PI/2;bar.position.set(0,top+.05,0);g.add(bar);
  }
  }else if(o.type==='photo'){const d=state.designs.find(d=>d.id===o.design);const ratio=T.MathUtils.clamp((d?.width||512)/(d?.height||512),.1,10),h=.7,w=h*ratio,depth=(o.photoThickness||3)/100;const tex=new T.TextureLoader().load(d?.src||'');tex.colorSpace=T.SRGBColorSpace;const mat=new T.MeshStandardMaterial({map:tex,transparent:true,alphaTest:.08,side:T.DoubleSide,roughness:.75});for(const z of [-depth/2,depth/2]){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,z);if(z<0)m.rotation.y=Math.PI;m.castShadow=true;g.add(m)}const layers=Math.min(12,Math.max(2,Math.round(depth*100)));for(let n=1;n<layers;n++){const m=new T.Mesh(new T.PlaneGeometry(w,h),mat.clone());m.position.set(0,h/2,-depth/2+depth*n/layers);g.add(m)}mat.dispose()}
 if(['pillow','bodypillow'].includes(o.type)){const w=o.type==='pillow'?.65:.42,h=o.type==='pillow'?.45:1.15,depth=o.type==='pillow'?.18:.23,exponent=o.type==='pillow'?.5:.72;const geo=new T.SphereGeometry(1,48,32),pos=geo.attributes.position,uv=geo.attributes.uv;const rounded=v=>Math.sign(v)*Math.pow(Math.abs(v),exponent);for(let n=0;n<pos.count;n++){const x=rounded(pos.getX(n))*w/2,y=rounded(pos.getY(n))*h/2,z=rounded(pos.getZ(n))*depth/2;pos.setXYZ(n,x,y,z);uv.setXY(n,x/w+.5,y/h+.5)}geo.computeVertexNormals();const m=new T.Mesh(geo,new T.MeshStandardMaterial({map:texture(o),roughness:.95}));m.position.y=h/2;m.castShadow=true;m.receiveShadow=true;g.add(m);const points=[];for(let n=0;n<=96;n++){const a=n/96*Math.PI*2;points.push(new T.Vector3(rounded(Math.cos(a))*w/2,rounded(Math.sin(a))*h/2+h/2,0))}const seam=new T.Line(new T.BufferGeometry().setFromPoints(points),new T.LineBasicMaterial({color:new T.Color(o.color).multiplyScalar(.82)}));g.add(seam)}
