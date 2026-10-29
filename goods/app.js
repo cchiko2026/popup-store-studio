@@ -3,13 +3,43 @@ const embedded=window.parent!==window;let linkedPlan=null,linkedProject=null,dra
 let restored=false;let state={version:1,name:'나의 첫 번째 팝업',width:8,depth:7,floor:'#eeece4',wall:'#faf9f5',designs:[],objects:[]}, selected=null,designId=null,view='orbit',visiting=false,theta=.72,phi=.8,distance=12,walkYaw=0,walkPitch=0,walkFov=72,groups=new Map(),saveTimer;
 const viewport=$('viewport'),scene=new T.Scene();scene.background=new T.Color('#edece7');const camera=new T.PerspectiveCamera(43,1,.05,100);let renderer;try{renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});}catch{viewport.innerHTML='<p>3D 화면을 열 수 없습니다. Chrome에서 하드웨어 가속을 켜고 다시 접속해 주세요.</p>';throw Error('WebGL unavailable')}
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;viewport.appendChild(renderer.domElement);scene.add(new T.HemisphereLight(0xffffff,0xadb39b,2.5));const light=new T.DirectionalLight(0xffffff,3);light.position.set(-4,10,5);light.castShadow=true;light.shadow.mapSize.set(1024,1024);light.shadow.camera.left=-12;light.shadow.camera.right=12;light.shadow.camera.top=12;light.shadow.camera.bottom=-12;scene.add(light);
+let highQuality=false,qualityLighting=new T.Group();scene.add(qualityLighting);
+const previousExposure=renderer.toneMappingExposure;
+function setQuality(enabled){
+ highQuality=!!enabled;
+ $('qualityMode').textContent=highQuality?'✓ 고품질 3D 켜짐':'✦ 고품질 3D 보기';
+ $('qualityMode').classList.toggle('active',highQuality);
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,highQuality?2:1.6));
+ renderer.toneMapping=highQuality?T.ACESFilmicToneMapping:T.NoToneMapping;
+ renderer.toneMappingExposure=highQuality?1.15:previousExposure;
+ renderer.shadowMap.type=T.PCFSoftShadowMap;
+ scene.background.set(highQuality?'#d9e0e2':'#edece7');
+ qualityLighting.clear();
+ if(highQuality){
+  const fill=new T.AmbientLight(0xffffff,.55);qualityLighting.add(fill);
+  for(const [x,z,power] of [[-2.5,-1.5,65],[0,-1.5,75],[2.5,-1.5,65],[-2.5,1.5,60],[0,1.5,75],[2.5,1.5,60]]){
+   const lamp=new T.SpotLight(0xfff4df,power,8,Math.PI/3,.65,2);lamp.position.set(x,2.58,z);lamp.target.position.set(x,.05,z);qualityLighting.add(lamp,lamp.target);
+  }
+ }
+ buildRoom();
+ resize();
+}
+$('qualityMode').onclick=()=>setQuality(!highQuality);
 let room=new T.Group();scene.add(room);const ground=new T.Plane(new T.Vector3(0,1,0),0),ray=new T.Raycaster(),pointer=new T.Vector2(),target=new T.Vector3(0,.5,0);
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').style.opacity=0,3500)}
 const uid=()=>crypto.randomUUID();const material=c=>new T.MeshStandardMaterial({color:c,roughness:.7});
 function box(g,w,h,d,x,y,z,c){const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m}
 function cylinder(g,r,h,x,y,z,c){const m=new T.Mesh(new T.CylinderGeometry(r,r,h,40),material(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m}
 function release(g){g.traverse(o=>{o.geometry?.dispose();if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){m.map?.dispose();m.dispose()}}})}
-function buildRoom(){scene.remove(room);release(room);room=new T.Group();scene.add(room);box(room,state.width,.12,state.depth,0,-.06,0,state.floor);// The floor plan uses centimetres from its top-left corner. 3D is centred:
+function buildRoom(){scene.remove(room);release(room);room=new T.Group();scene.add(room);const floorMesh=box(room,state.width,.12,state.depth,0,-.06,0,state.floor);
+if(highQuality){
+ const c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');
+ ctx.fillStyle=state.floor;ctx.fillRect(0,0,512,512);
+ ctx.strokeStyle='rgba(90,85,80,.13)';ctx.lineWidth=2;
+ for(let k=0;k<=8;k++){const p=k*64;ctx.beginPath();ctx.moveTo(p,0);ctx.lineTo(p,512);ctx.stroke();ctx.beginPath();ctx.moveTo(0,p);ctx.lineTo(512,p);ctx.stroke()}
+ const t=new T.CanvasTexture(c);t.colorSpace=T.SRGBColorSpace;t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(state.width/2,state.depth/2);
+ floorMesh.material.dispose();floorMesh.material=new T.MeshStandardMaterial({map:t,roughness:.72,metalness:.03});
+}// The floor plan uses centimetres from its top-left corner. 3D is centred:
 // x3D=xPlan/100-4, z3D=yPlan/100-3. Door: left wall y=455..540cm.
 const left=-state.width/2,right=state.width/2,back=-state.depth/2,front=state.depth/2;
 box(room,state.width,2.7,.12,0,1.35,back,state.wall);
@@ -18,10 +48,10 @@ box(room,.12,2.7,doorStart-back,left,1.35,(back+doorStart)/2,state.wall);
 box(room,.12,2.7,front-doorEnd,left,1.35,(doorEnd+front)/2,state.wall);
 box(room,.12,.3,.85,left,2.55,(doorStart+doorEnd)/2,state.wall);
 // Low outer walls retain a clear cutaway view, matching the legacy 3D preview.
-box(room,.12,1.1,state.depth,right,.55,0,state.wall);
-box(room,state.width,1.1,.12,0,.55,front,state.wall);
+box(room,.12,highQuality?2.7:1.1,state.depth,right,highQuality?1.35:.55,0,state.wall);
+box(room,state.width,highQuality?2.7:1.1,.12,0,highQuality?1.35:.55,front,state.wall);
 const minor=[],major=[];for(let n=0;n<=Math.round(state.width*10);n++){const x=left+n/10;(n%5===0?major:minor).push(x,.008,back,x,.008,front)}for(let n=0;n<=Math.round(state.depth*10);n++){const z=back+n/10;(n%5===0?major:minor).push(left,.008,z,right,.008,z)}
-for(const [points,color]of [[minor,0xdaddd2],[major,0xc4c9bb]]){const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(points,3));room.add(new T.LineSegments(geometry,new T.LineBasicMaterial({color})))}
+for(const [points,color]of highQuality?[]:[[minor,0xdaddd2],[major,0xc4c9bb]]){const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(points,3));room.add(new T.LineSegments(geometry,new T.LineBasicMaterial({color})))}
 const doorPoints=[left,.018,doorEnd,left+.85,.018,doorEnd];const arc=[];for(let n=0;n<=24;n++){const a=-Math.PI/2+n*Math.PI/48;arc.push(new T.Vector3(left+.85*Math.cos(a),.02,doorEnd+.85*Math.sin(a)))}const doorGeo=new T.BufferGeometry();doorGeo.setAttribute('position',new T.Float32BufferAttribute(doorPoints,3));room.add(new T.LineSegments(doorGeo,new T.LineBasicMaterial({color:0x78886a})));room.add(new T.Line(new T.BufferGeometry().setFromPoints(arc),new T.LineBasicMaterial({color:0x78886a})));
 if(embedded&&linkedPlan)for(const route of linkedPlan.routes||[]){const pts=route.map(p=>new T.Vector3(p.x/100-4,.022,p.y/100-3));if(pts.length>1)room.add(new T.Line(new T.BufferGeometry().setFromPoints(pts),new T.LineBasicMaterial({color:0x3b5737})))}
 for(const mesh of room.children.filter(o=>o.isMesh&&o.geometry?.type==='BoxGeometry'&&o.position.y>0)){mesh.material.transparent=!visiting;mesh.material.opacity=visiting?1:.18;mesh.material.depthWrite=visiting}
