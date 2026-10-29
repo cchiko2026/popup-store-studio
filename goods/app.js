@@ -63,7 +63,9 @@ function texture(o){const c=document.createElement('canvas');c.width=c.height=51
 function front(g,o,w,h,z,y){const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({map:texture(o),roughness:.8,side:T.DoubleSide}));m.position.set(0,y,z);g.add(m)}
 function build(o){const g=new T.Group(),c=o.color;if(o.type==='external'){
 for(const f of o.faces||[]){const positions=[];for(let n=1;n<f.points.length-1;n++)for(const pt of [f.points[0],f.points[n],f.points[n+1]])positions.push(...pt);const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.computeVertexNormals();const rgba=/rgba\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*\)/.exec(String(f.color));
-const actualColor=rgba?`rgb(${rgba[1]},${rgba[2]},${rgba[3]})`:f.color;
+// Parent 2D preview bakes different face-darkening factors into each polygon.
+ // In final artwork mode, use one actual material color and let 3D lights create the shading.
+ const actualColor=highQuality&&o.sourceKind==='furniture'&&o.finish!=='glass'?(o.color||f.color):(rgba?`rgb(${rgba[1]},${rgba[2]},${rgba[3]})`:f.color);
 const isWall=o.sourceKind==='wall',isGlass=o.finish==='glass';
 const glassOpacity=rgba?Math.max(.18,Math.min(1,Number(rgba[4]))):.38;
 const transparent=highQuality?isGlass:(isWall&&!visiting||!!rgba);
